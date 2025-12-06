@@ -394,7 +394,7 @@ function viewAllResources() {
         <div class="search-header-content">
           <button @click="closeSearchView" class="back-btn">←</button>
           <div class="search-bar">
-            <input v-model="searchQuery" @input="performSearch" type="text" placeholder="搜索资源..." class="search-input"
+            <input v-model="searchQuery" @input="performSearch" cursor: text type="text" placeholder="搜索资源..." class="search-input"
               autofocus />
             <button v-if="searchQuery" @click="searchQuery = ''; searchResults = []" class="clear-btn">×</button>
           </div>
@@ -597,6 +597,10 @@ body {
   height: 100%;
   margin: 0;
   padding: 0;
+  -webkit-user-select: none; /* 针对 WebKit 内核浏览器 (Chrome, Safari) */
+    -moz-user-select: none;    /* 针对 Firefox */
+    -ms-user-select: none;     /* 针对 IE/Edge */
+    user-select: none;
 }
 </style>
 <style scoped>
