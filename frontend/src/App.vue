@@ -3,9 +3,37 @@ import { ref, onMounted, computed } from 'vue';
 import axios from 'axios';
 import live2d from "vue3-live2d";
 import ResourceCard from './components/ResourceCard.vue';
+import { NInput, NButton, NForm, NFormItem,NConfigProvider,NAvatar,NDropdown } from 'naive-ui';
 onMounted(() => {
   document.documentElement.classList.add('loaded');
 });
+const loginInputOverrides = {
+    Input: {   
+        heightLarge: '48px', 
+        paddingLarge: '0 18px', 
+        fontSizeLarge: '16px', 
+        borderRadius: '12px', 
+        color: 'rgba(255, 255, 255, 0.8)', 
+        border: '2px solid #e2e8f0', 
+        borderHover: '2px solid #e2e8f0', 
+        borderFocus: '2px solid #6a5af9', 
+        boxShadowFocus: '0 0 0 3px rgba(106, 90, 249, 0.1)',
+        colorFocus: 'white', 
+    }
+};
+const showDropdown = ref(false);
+const dropdownOptions = ref([
+    {
+        label: '更改密码',
+        key: 'change-password',
+        icon: () => '🔑' 
+    },
+    {
+        label: '下载记录',
+        key: 'download-history',
+        icon: () => '📜'
+    }
+]);
 const tips = ref({ visibilitychange: [{ selector: 'document', texts: ['哇，你终于回来了～'] }] });
 const searchResults = ref([]);
 const isSearching = ref(false);
@@ -48,33 +76,40 @@ const rankingResources = computed(() => {
     .sort((a, b) => (b.times || 0) - (a.times || 0))
     .slice(0, 25);
 });
+function handleDropdownSelect(key) {
+    showDropdown.value = false; // 关闭菜单
+    switch (key) {
+        case 'change-password':
+            alert('功能待实现：跳转到更改密码页面或弹出模态框。');
+            // 实际操作：showModal.value = true
+            break;
+        case 'download-history':
+            alert('功能待实现：显示下载记录列表。');
+            // 实际操作：showDownloadHistoryView.value = true
+            break;
+        case 'logout':
+            logout(); // 调用您已有的退出登录函数
+            break;
+    }
+}
 async function handleRegister() {
     loginError.value = '';
-    
-    // 简单的前端验证
     if (!username.value || !password.value) {
         loginError.value = '用户名和密码不能为空！';
         return;
     }
-
     try {
-        // 调用后端注册接口
         const response = await axios.post(`${API_BASE}/api/register`, {
             username: username.value,
             password: password.value 
         });
-
-        // 注册成功
         alert('注册成功！请使用您的新账户登录。');
-        // 切换回登录界面
         showRegisterView.value = false;
         loginError.value = ''; 
-        // 清空密码
         password.value = '';
         
     } catch (err) {
         console.error('注册失败:', err);
-        // 处理后端返回的错误，例如用户名已存在
         if (err.response && err.response.data) {
             loginError.value = err.response.data;
         } else {
@@ -82,46 +117,41 @@ async function handleRegister() {
         }
     }
 }
-
-// 新增切换函数
 function toggleView() {
     showRegisterView.value = !showRegisterView.value;
-    username.value = ''; // 切换时清空输入
+    username.value = ''; 
     password.value = '';
     loginError.value = '';
 }
 async function handleLogin() {
     loginError.value = '';
-    
-    // 简单的前端验证
+
     if (!username.value || !password.value) {
         loginError.value = '用户名和密码不能为空！';
         return;
     }
     
-    // 确保当前处于登录视图
+
     if (showRegisterView.value) return; 
 
     try {
-        // 调用后端登录接口
+      
         const response = await axios.post(`${API_BASE}/api/login`, {
             username: username.value,
             password: password.value 
         });
 
-        // 登录成功 (后端返回 200 OK)
+ 
         if (response.status === 200) {
             loginError.value = '';
-            // 设置登录状态为 true
+   
             isLoggedIn.value = true;
-            // 登录成功后，获取资源数据
+   
             fetchResources();
         } 
     } catch (err) {
-        // 登录失败 (后端返回 400 Bad Request)
         console.error('登录失败:', err);
         if (err.response && err.response.data) {
-            // 显示后端返回的错误信息（如“用户名或密码错误”）
             loginError.value = err.response.data;
         } else {
             loginError.value = '登录失败，无法连接到服务器。';
@@ -240,31 +270,46 @@ function viewAllResources() {
     :style="{ position: 'fixed', bottom: 0, right: 0, zIndex: 2999 }" api-path="./live2d-static-api/indexes"
     :model="['hk416_3401/hk416_3401', 'default']" :tips="tips" />
   <div v-if="!isLoggedIn" class="login-wrapper">
-  <div class="login-box">
-    <div class="login-header">
-      <h1 class="title">✨ 319资源站</h1>
+    <div class="login-box">
+        <div class="login-header">
+            <h1 class="title">✨ 319资源站</h1>
+        </div>
+        <n-config-provider :theme-overrides="loginInputOverrides">
+        <n-form @submit.prevent="showRegisterView ? handleRegister() : handleLogin()" class="login-form">
+            <n-form-item :show-feedback="false">
+                <n-input
+                    v-model:value="username"
+                    round
+                    type="text"
+                    placeholder="用户名"
+                    size="large"
+                    clearable
+                    :input-props="{ required: true }"
+                />
+            </n-form-item>
+            <n-form-item :show-feedback="false" style="margin-bottom: 24px;">
+                <n-input
+                    round
+                    v-model:value="password"
+                    type="password"
+                    placeholder="密码"
+                    size="large"
+                    show-password-on="click"
+                    clearable
+                    :input-props="{ required: true }"
+                    @keyup.enter="showRegisterView ? handleRegister() : handleLogin()"
+                />
+            </n-form-item>
+            <button type="submit" class="login-btn">
+                {{ showRegisterView ? '注册' : '登录' }}
+            </button>
+            <p v-if="loginError" class="error">{{ loginError }}</p>
+            <button type="button" class="switch-btn" @click="toggleView">
+                {{ showRegisterView ? '已有账号？去登录' : '没有账号？去注册' }}
+            </button>
+        </n-form>
+        </n-config-provider>
     </div>
-    
-    <form @submit.prevent="showRegisterView ? handleRegister() : handleLogin()" class="login-form">
-      <div class="input-group">
-        <input v-model="username" type="text" placeholder="用户名" class="input" required />
-      </div>
-      <div class="input-group">
-        <input v-model="password" type="password" placeholder="密码" class="input" required />
-      </div>
-      
-      <button type="submit" class="login-btn">
-        {{ showRegisterView ? '注册' : '登录' }}
-      </button>
-
-      <p v-if="loginError" class="error">{{ loginError }}</p>
-      
-      <button type="button" class="switch-btn" @click="toggleView">
-        {{ showRegisterView ? '已有账号？去登录' : '没有账号？去注册' }}
-      </button>
-    </form>
-    
-  </div>
 </div>
   <div v-else class="main-layout">
     <div v-if="showSearchView" class="search-view">
@@ -358,9 +403,22 @@ function viewAllResources() {
             <a href="#" class="nav-link" @click.prevent="showFiltered('视频')">视频</a>
             <a href="#" class="nav-link" @click.prevent="showFiltered('应用')">应用</a>
             <a href="#" class="nav-link" @click.prevent="showRanking">排行榜</a>
+            <a href="#" class="nav-link" @click.prevent="">社区</a>
           </nav>
           <div class="header-actions">
             <button @click="toggleSearchView" class="search-icon">🔍</button>
+            <n-dropdown 
+        trigger="click" 
+        :options="dropdownOptions" 
+        @select="handleDropdownSelect"
+        :show="showDropdown"
+        @update:show="showDropdown = $event">
+        <n-avatar 
+            size="small" 
+            style="margin-right: 10px; margin-left: 5px; cursor: pointer;" 
+            src="./touxiang.jpg"
+            @click="showDropdown = !showDropdown"/>
+          </n-dropdown>
             <button @click="logout" class="logout-btn">退出登录</button>
           </div>
         </div>
@@ -386,7 +444,7 @@ function viewAllResources() {
 
         <div class="section-header">
           <h2 class="section-title">最新资源</h2>
-          <a href="#" class="view-more" @click.prevent="viewAllResources">查看更多</a>
+          <a href="#" class="view-more" @click.prevent="viewAllResources">查看全部</a>
         </div>
         <div class="resource-grid">
           <ResourceCard v-for="resource in latestResources" :key="resource.id" :resource="resource"
@@ -407,6 +465,8 @@ body {
 }
 </style>
 <style scoped>
+
+
 * {
   margin: 0;
   padding: 0;
@@ -473,27 +533,13 @@ body {
   letter-spacing: -0.5px;
 }
 
-.login-form .input-group {
-  margin-bottom: 16px;
+.login-form ::v-deep(.n-input__input-el),
+.login-form ::v-deep(.n-input__placeholder) {
+    text-align: left !important;
 }
-
-.login-form .input {
-  width: 100%;
-  padding: 14px 18px;
-  border: 2px solid #e2e8f0;
-  border-radius: 12px;
-  font-size: 16px;
-  background: rgba(255, 255, 255, 0.8);
-  transition: all 0.3s ease;
+.login-form ::v-deep(.n-input) {
+    text-align: left !important;
 }
-
-.login-form .input:focus {
-  outline: none;
-  border-color: #6a5af9;
-  box-shadow: 0 0 0 3px rgba(106, 90, 249, 0.1);
-  background: white;
-}
-
 .login-form .login-btn {
   width: 40%;
   padding: 14px;
