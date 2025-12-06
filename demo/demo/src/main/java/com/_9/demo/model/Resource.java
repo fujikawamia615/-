@@ -23,7 +23,7 @@ public class Resource {
 	private String cover;
 	@Column(name = "file_key")
 	private String fileKey;
-
+	private int times=0;
 	private Long size;
 	
 	@Column(name="file_type")

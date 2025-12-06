@@ -82,6 +82,19 @@ public class ResourceController {
     public ResponseEntity<org.springframework.core.io.Resource> downloadResource(
             @PathVariable String type,
             @PathVariable String fileKey) {
+
+        // 1. 先根据 fileKey 和 type 找到资源（假设 fileKey 是唯一标识）
+        com._9.demo.model.Resource resource = resourceRepository.findByFileKeyAndFileType(fileKey, type);
+        
+        if (resource == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        // 2. 递增点击次数
+        resource.setTimes(resource.getTimes() + 1);
+        resourceRepository.save(resource); // 保存回数据库
+
+        // 3. 正常返回文件
         return serveFile(type, fileKey, false);
     }
 
