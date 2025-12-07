@@ -28,7 +28,7 @@
 
 1.  **数据库配置：**
     * 在本地安装mysql，并创建数据库 `resources_db`。
-    * 修改 `src/main/resources/application.properties` (或 `.yml`) 中的数据库连接信息：
+    * 修改 `src/main/resources/application.yaml` 中的数据库连接信息：
         ```properties
         # 示例配置
         spring.datasource.url=[您的数据库连接 URL]

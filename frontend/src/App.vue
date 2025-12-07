@@ -343,7 +343,7 @@ function viewAllResources() {
 
 <template>
   <live2d class="live2d" v-model:width="width" v-model:height="height" v-model:resolution="resolution"
-    homePage="https://github.com/fujikawamia615/frontend"
+    homePage="https://github.com/fujikawamia615/resourcestation"
     :style="{ position: 'fixed', bottom: 0, right: 0, zIndex: 2999 }" api-path="./live2d-static-api/indexes"
     :model="['hk416_3401/hk416_3401', 'default']" :tips="tips" />
   <div v-if="!isLoggedIn" class="login-wrapper">
