@@ -2,8 +2,6 @@
 ## 📚 个人全栈学习与实践的资源分享平台
 
 
-[![GitHub contributors](https://img.shields.io/github/contributors/fujikawamia615/resourcestation)]
-
 ---
 
 ## ✨ 项目简介 (Project Overview)
@@ -18,7 +16,7 @@
 | | **Naive UI** | 基于 Vue 3 的组件库，提供美观且高性能的 UI 组件。 |
 | | **vue-live2d** | 引入 Live2D 模型，增加网站的互动性和趣味性。 |
 | **后端 (Backend)** | **Spring Boot** | 用于构建健壮、易于部署的 RESTful API 服务。 |
-| **数据 (Database)** | [您的数据库，例如：MySQL / PostgreSQL] | 存储资源信息、用户数据等。 |
+| **数据 (Database)** | **MySQL** | 存储资源信息、用户数据等。 |
 
 ---
 
@@ -29,7 +27,7 @@
 ### 1. 后端 (Spring Boot) 配置
 
 1.  **数据库配置：**
-    * 在本地安装 [您的数据库，例如：MySQL]，并创建数据库 `resourcestation_db`。
+    * 在本地安装mysql，并创建数据库 `resources_db`。
     * 修改 `src/main/resources/application.properties` (或 `.yml`) 中的数据库连接信息：
         ```properties
         # 示例配置
@@ -38,7 +36,7 @@
         spring.datasource.password=[您的密码]
         ```
 2.  **启动服务：**
-    * 使用 IDE（如 IntelliJ IDEA）打开项目并运行 `Application.java`。
+    * 使用 IDE（如 IntelliJ IDEA）打开项目并运行 `DemoApplication.java`。
     * 或使用 Maven/Gradle 命令打包并运行。
 
 ### 2. 前端 (Vue 3) 配置
@@ -49,9 +47,9 @@
     npm install  # 或 yarn install
     ```
 2.  **配置 API 地址：**
-    * 修改项目根目录下的 `.env.development` 文件，指向您的后端服务地址：
+    * 修改app.vue下的API_BASE属性，指向您的后端服务地址：
         ```bash
-        VITE_APP_API_BASE_URL=http://localhost:8080/api  # 假设后端运行在 8080 端口
+        API_BASE=http://localhost:8080/api  # 假设后端运行在 8080 端口
         ```
 3.  **启动前端服务：**
     ```bash
@@ -86,5 +84,3 @@
 ## 📞 联系方式 (Contact)
 
 [您的昵称/姓名] - fujikawamia615
-
-项目链接: [https://github.com/fujikawamia615/resourcestation](https://github.com/fujikawamia615/resourcestation)
