@@ -1238,14 +1238,4 @@ body {
 .audio-element {
     width: 100%; /* 填满模态框宽度 */
 }
-:deep(.n-button:focus-visible) {
-    outline: none !important; /* 强制移除轮廓线 */
-    box-shadow: none !important; /* 确保没有残留的阴影 */
-}
-
-/* 兼容旧版本 Vue/Loader */
-/* ::v-deep(.n-button:focus-visible) {
-    outline: none !important;
-    box-shadow: none !important;
-} */
 </style>
