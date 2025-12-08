@@ -529,6 +529,14 @@ function viewAllResources() {
             :handleImageError="handleImageError" @play="playVideo" @read="readDocument" @audio="playAudio"/>
         </div>
       </div>
+      <footer class="site-footer">
+        <div class="footer-content">
+          <p class="copyright">© 2025 319资源站 | All Rights Reserved</p>
+          <a href="https://beian.miit.gov.cn/" target="_blank" class="icp-link">
+            浙ICP备2025215321号-1
+          </a>
+        </div>
+      </footer>
     </div>
   </div>
   <n-modal v-model:show="showVideoPlayerModal" preset="card" :mask-closable="false" :style="{ width: '90%', maxWidth: '1000px' }">
@@ -1143,9 +1151,50 @@ body {
   transform: translateY(-1px);
   box-shadow: 0 4px 15px rgba(106, 90, 249, 0.3);
 }
+.site-footer {
+    width: 100%;
+    /* 确保页脚不会被滚动条覆盖，并且位于底部 */
+    padding: 20px 24px;
+    background: #f0f2ff; /* 浅色背景 */
+    color: #666;
+    text-align: center;
+    border-top: 1px solid #e2e8f0;
+    flex-shrink: 0; /* 防止页脚被收缩 */
+}
 
+.footer-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 14px;
+}
+
+.copyright {
+    margin: 0;
+}
+
+.icp-link {
+    color: #6a5af9;
+    text-decoration: none;
+    transition: color 0.3s;
+}
+
+.icp-link:hover {
+    color: #8a7bff;
+    text-decoration: underline;
+}
 @media (max-width: 768px) {
+  .site-footer {
+        padding: 15px 16px;
+    }
 
+    .footer-content {
+        font-size: 12px;
+    }
   .header-content,
   .container,
   .search-header-content,
@@ -1238,4 +1287,5 @@ body {
 .audio-element {
     width: 100%; /* 填满模态框宽度 */
 }
+
 </style>
