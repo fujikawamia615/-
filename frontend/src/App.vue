@@ -3,7 +3,7 @@ import { ref, onMounted, computed, h } from 'vue';
 import axios from 'axios';
 import live2d from "vue3-live2d";
 import ResourceCard from './components/ResourceCard.vue';
-import { NInput, NButton, NForm, NFormItem, NConfigProvider, NAvatar, NDropdown, NModal, NCard, NDataTable, NEmpty } from 'naive-ui';
+import { NInput, NButton, NForm, NFormItem, NConfigProvider, NAvatar, NDropdown, NModal, NCard, NDataTable, NEmpty, NList, NListItem, NTag } from 'naive-ui';
 onMounted(() => {
   document.documentElement.classList.add('loaded');
 });
@@ -34,6 +34,18 @@ const dropdownOptions = ref([
     icon: () => '📜'
   }
 ]);
+const showCommunityView = ref(false); // 控制社区视图显示
+const communityPosts = ref([]); // 存储帖子列表
+const isFetchingPosts = ref(false); // 加载状态
+const fetchPostsError = ref(null); // 帖子加载错误
+
+const showPostModal = ref(false); // 控制发帖模态框显示
+const newPostForm = ref({ // 新帖子表单数据
+  title: '',
+  content: ''
+});
+const postError = ref(''); // 发帖错误信息
+const postSuccess = ref(''); // 发帖成功信息
 const showChangePasswordModal = ref(false); // 控制模态框显示
 const changePasswordForm = ref({
   oldPassword: '',
@@ -182,49 +194,106 @@ function handleDropdownSelect(key) {
       break;
   }
 }
+// ... (在 fetchResources 之后添加)
+
+function showCommunity() {
+  showCommunityView.value = true;
+  // 确保其他视图被隐藏
+  showSearchView.value = false;
+  showRankingView.value = false;
+  currentFilter.value = null;
+  showAllResources.value = false;
+
+  fetchCommunityPosts();
+}
+
+async function fetchCommunityPosts() {
+  isFetchingPosts.value = true;
+  fetchPostsError.value = null;
+  try {
+    const response = await axios.get(`${API_BASE}/api/community/posts`);
+    communityPosts.value = response.data;
+  } catch (err) {
+    console.error('获取帖子失败:', err);
+    fetchPostsError.value = '无法加载社区帖子，请检查网络或服务器。';
+  } finally {
+    isFetchingPosts.value = false;
+  }
+}
+
+async function handleSubmitPost() {
+  postError.value = '';
+  postSuccess.value = '';
+
+  if (!newPostForm.value.content.trim()) {
+    postError.value = '帖子内容不能为空！';
+    return;
+  }
+
+  try {
+    const response = await axios.post(`${API_BASE}/api/community/post`, {
+      author: username.value, // 核心：使用登录的用户名作为作者
+      title: newPostForm.value.title,
+      content: newPostForm.value.content
+    });
+
+    postSuccess.value = '帖子发布成功！正在刷新列表...';
+
+    // 成功后清空表单，关闭模态框，并刷新帖子列表
+    setTimeout(() => {
+      showPostModal.value = false;
+      newPostForm.value = { title: '', content: '' };
+      fetchCommunityPosts(); // 刷新列表
+    }, 1500);
+
+  } catch (err) {
+    console.error('发布帖子失败:', err);
+    postError.value = err.response && err.response.data ? err.response.data : '发布失败，请稍后再试。';
+  }
+}
 async function fetchDownloadHistory() {
-    // 假设您在登录后将用户名存储在 username.value 中
-    if (!username.value) {
-        downloadHistoryError.value = '请先登录。';
-        return;
+  // 假设您在登录后将用户名存储在 username.value 中
+  if (!username.value) {
+    downloadHistoryError.value = '请先登录。';
+    return;
+  }
+
+  downloadHistoryList.value = [];
+  downloadHistoryError.value = '';
+
+  try {
+    // 1. 调用后端接口获取响应
+    const response = await axios.post(`${API_BASE}/api/download-history`, {
+      username: username.value
+    });
+
+    // 🎯 核心修正：直接使用 response.data 作为对象
+    // axios 已经帮我们解析了 JSON
+    const historyMap = response.data;
+
+    const processedList = [];
+
+    // 2. 将 Map 转换成方便 Vue 渲染的数组格式
+    // 检查 historyMap 是否是有效的对象
+    if (historyMap && typeof historyMap === 'object') {
+      for (const [title, count] of Object.entries(historyMap)) {
+        processedList.push({ title, count });
+      }
     }
-    
-    downloadHistoryList.value = [];
-    downloadHistoryError.value = '';
-    
-    try {
-        // 1. 调用后端接口获取响应
-        const response = await axios.post(`${API_BASE}/api/download-history`, {
-            username: username.value
-        });
 
-        // 🎯 核心修正：直接使用 response.data 作为对象
-        // axios 已经帮我们解析了 JSON
-        const historyMap = response.data;
-        
-        const processedList = [];
+    // 3. (可选) 按下载次数降序排序
+    processedList.sort((a, b) => b.count - a.count);
 
-        // 2. 将 Map 转换成方便 Vue 渲染的数组格式
-        // 检查 historyMap 是否是有效的对象
-        if (historyMap && typeof historyMap === 'object') {
-            for (const [title, count] of Object.entries(historyMap)) {
-                processedList.push({ title, count });
-            }
-        }
-        
-        // 3. (可选) 按下载次数降序排序
-        processedList.sort((a, b) => b.count - a.count);
+    downloadHistoryList.value = processedList;
+    showDownloadHistoryModal.value = true; // 显示模态框
 
-        downloadHistoryList.value = processedList;
-        showDownloadHistoryModal.value = true; // 显示模态框
-
-    } catch (err) {
-        console.error('获取下载历史失败:', err);
-        // ... 错误处理逻辑保持不变 ...
-        const errorMessage = err.response && err.response.data ? err.response.data : '获取下载历史失败，请检查网络或登录状态。';
-        downloadHistoryError.value = errorMessage;
-        showDownloadHistoryModal.value = true;
-    }
+  } catch (err) {
+    console.error('获取下载历史失败:', err);
+    // ... 错误处理逻辑保持不变 ...
+    const errorMessage = err.response && err.response.data ? err.response.data : '获取下载历史失败，请检查网络或登录状态。';
+    downloadHistoryError.value = errorMessage;
+    showDownloadHistoryModal.value = true;
+  }
 }
 async function handleChangePassword() {
   changePasswordError.value = '';
@@ -370,26 +439,26 @@ function getCoverUrl(coverName) {
 }
 
 function getResourceDownloadUrl(resource) {
-    if (!resource.fileType || !resource.fileKey) return '#';
+  if (!resource.fileType || !resource.fileKey) return '#';
 
-    const encodedType = encodeURIComponent(resource.fileType);
-    const encodedKey = encodeURIComponent(resource.fileKey);
+  const encodedType = encodeURIComponent(resource.fileType);
+  const encodedKey = encodeURIComponent(resource.fileKey);
 
-    // 1. 构造基础 URL (不带用户名)
-    const baseUrl = `${API_BASE}/api/download/resource/${encodedType}/${encodedKey}`;
+  // 1. 构造基础 URL (不带用户名)
+  const baseUrl = `${API_BASE}/api/download/resource/${encodedType}/${encodedKey}`;
 
-    // 2. 检查用户是否登录，并获取用户名
-    // 假设您在登录成功后，username.value 存储了当前用户名
-    if (isLoggedIn.value && username.value) {
-        // 3. 拼接查询参数
-        // ❗ 核心修改：在 URL 后面添加 ?username=用户名
-        return `${baseUrl}?username=${encodeURIComponent(username.value)}`;
-    }
-    
-    // 如果未登录，返回基础 URL 或 # (为了安全，最好阻止未登录用户下载)
-    // 您的后端会通过 @RequestParam(required = true) 强制要求这个参数
-    // 如果没有 username，后端会拒绝请求。
-    return baseUrl; 
+  // 2. 检查用户是否登录，并获取用户名
+  // 假设您在登录成功后，username.value 存储了当前用户名
+  if (isLoggedIn.value && username.value) {
+    // 3. 拼接查询参数
+    // ❗ 核心修改：在 URL 后面添加 ?username=用户名
+    return `${baseUrl}?username=${encodeURIComponent(username.value)}`;
+  }
+
+  // 如果未登录，返回基础 URL 或 # (为了安全，最好阻止未登录用户下载)
+  // 您的后端会通过 @RequestParam(required = true) 强制要求这个参数
+  // 如果没有 username，后端会拒绝请求。
+  return baseUrl;
 }
 
 function handleImageError(e) {
@@ -532,6 +601,50 @@ function viewAllResources() {
         </div>
       </div>
     </div>
+    <div v-else-if="showCommunityView" class="community-view">
+      <header class="community-header">
+        <div class="community-header-content">
+          <button @click="showCommunityView = false" class="back-btn">← 返回</button>
+          <h2>💬 社区讨论</h2>
+          <n-button type="primary" size="medium" @click="showPostModal = true; postError = ''; postSuccess = ''"
+            style="background: linear-gradient(90deg, #6a5af9, #8a7bff); border: none;">
+            发布新帖
+          </n-button>
+        </div>
+      </header>
+
+      <div class="community-list-container">
+        <div v-if="isFetchingPosts" class="loading-state">
+          <div class="loading-spinner"></div>
+          <p>正在加载帖子...</p>
+        </div>
+
+        <div v-else-if="fetchPostsError" class="error-state">
+          <p class="error-text">{{ fetchPostsError }}</p>
+          <n-button @click="fetchCommunityPosts" type="info">重新加载</n-button>
+        </div>
+
+        <n-list v-else bordered hoverable class="post-list">
+          <n-list-item v-for="post in communityPosts" :key="post.id" class="post-item">
+            <n-card :title="post.title || '无标题'" size="small" :bordered="false">
+              <template #header-extra>
+                <span class="post-author">@{{ post.author }}</span>
+              </template>
+              <div class="post-content-preview">{{ post.content }}</div>
+              <template #footer>
+                <div class="post-footer">
+                  <span class="post-time">{{ new Date(post.postTime).toLocaleString() }}</span>
+                </div>
+              </template>
+            </n-card>
+          </n-list-item>
+
+          <n-empty v-if="communityPosts.length === 0" description="社区暂无帖子" size="large"
+            style="padding: 40px 0;"></n-empty>
+
+        </n-list>
+      </div>
+    </div>
     <div v-else-if="showRankingView" class="ranking-view">
       <header class="ranking-header">
         <div class="ranking-header-content">
@@ -559,6 +672,7 @@ function viewAllResources() {
         </ul>
       </div>
     </div>
+
     <div v-else-if="currentFilter" class="filter-view">
       <header class="filter-header">
         <div class="filter-header-content">
@@ -588,7 +702,7 @@ function viewAllResources() {
             <a href="#" class="nav-link" @click.prevent="showFiltered('视频')">视频</a>
             <a href="#" class="nav-link" @click.prevent="showFiltered('应用')">应用</a>
             <a href="#" class="nav-link" @click.prevent="showRanking">排行榜</a>
-            <a href="#" class="nav-link" @click.prevent="">社区</a>
+            <a href="#" class="nav-link" @click.prevent="showCommunity">社区</a>
           </nav>
           <div class="header-actions">
             <button @click="toggleSearchView" class="search-icon">🔍</button>
@@ -771,6 +885,38 @@ function viewAllResources() {
 
   <n-modal v-model:show="showChangePasswordModal" preset="card" :mask-closable="true"
     :style="{ width: '90%', maxWidth: '450px' }">
+  </n-modal>
+  <n-modal v-model:show="showPostModal" preset="card" :mask-closable="true"
+    :style="{ width: '90%', maxWidth: '600px' }">
+    <template #header>
+      <h2>✏️ 发布新帖</h2>
+    </template>
+
+    <n-form @submit.prevent="handleSubmitPost">
+      <n-form-item label="帖子标题 (可选)" path="title">
+        <n-input v-model:value="newPostForm.title" placeholder="输入帖子标题" maxlength="100" show-count />
+      </n-form-item>
+
+      <n-form-item label="内容" path="content" :required="true">
+        <n-input v-model:value="newPostForm.content" type="textarea" placeholder="分享你的想法或问题..." :rows="6"
+          maxlength="2000" show-count />
+      </n-form-item>
+
+      <p v-if="postError" class="error">{{ postError }}</p>
+      <p v-if="postSuccess" class="success-msg">{{ postSuccess }}</p>
+
+      <n-button attr-type="submit" block type="primary" size="large"
+        style="margin-top: 20px; background: linear-gradient(90deg, #6a5af9, #8a7bff); border: none;"
+        :disabled="!!postSuccess || !newPostForm.content.trim()">
+        确认发布
+      </n-button>
+    </n-form>
+
+    <template #footer>
+      <n-button type="text" @click="showPostModal = false">
+        取消
+      </n-button>
+    </template>
   </n-modal>
 </template>
 <style>
@@ -977,32 +1123,39 @@ body {
   /* 关键修改：移除焦点边框 */
   outline: none;
 }
+
 /* 示例 CSS 样式 */
 .history-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
 }
+
 .rank-icon {
-    font-weight: bold;
-    min-width: 30px;
-    text-align: center;
+  font-weight: bold;
+  min-width: 30px;
+  text-align: center;
 }
+
 .top-rank {
-    color: #ff4500; /* 突显前三名 */
+  color: #ff4500;
+  /* 突显前三名 */
 }
+
 .resource-title {
-    flex-grow: 1;
-    margin: 0 15px;
-    font-size: 15px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  flex-grow: 1;
+  margin: 0 15px;
+  font-size: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
+
 .download-count {
-    flex-shrink: 0;
+  flex-shrink: 0;
 }
+
 .switch-btn:hover {
   background: rgba(106, 90, 249, 0.1);
 }
@@ -1021,6 +1174,46 @@ body {
 .logout-btn:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 15px rgba(106, 90, 249, 0.3);
+}
+
+/* 示例：复用头部样式 */
+
+
+/* 帖子卡片样式 */
+.post-list {
+  max-width: 1000px;
+  margin: 20px auto;
+}
+
+.post-item {
+  margin-bottom: 10px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.post-content-preview {
+  font-size: 14px;
+  color: #333;
+  max-height: 60px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+.post-footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #999;
+  margin-top: 10px;
+}
+
+.post-author {
+  color: #6a5af9;
+  font-weight: 600;
+  font-size: 14px;
 }
 
 
@@ -1152,7 +1345,8 @@ body {
 /* ===== 搜索视图 ===== */
 .search-view,
 .normal-view,
-.filter-view {
+.filter-view,
+.community-view {
   position: fixed;
   top: 0;
   left: 0;
@@ -1165,7 +1359,8 @@ body {
 }
 
 .search-header,
-.filter-header {
+.filter-header,
+.community-header {
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.3);
@@ -1174,7 +1369,8 @@ body {
 }
 
 .search-header-content,
-.filter-header-content {
+.filter-header-content,
+.community-header-content {
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
@@ -1263,7 +1459,9 @@ body {
 
 .search-results,
 .container,
-.filter-results {
+.filter-results,
+.community-list-container
+ {
   flex: 1;
   overflow-y: auto;
   width: 100%;
@@ -1385,7 +1583,7 @@ body {
 .site-footer {
   width: 100%;
   /* 确保页脚不会被滚动条覆盖，并且位于底部 */
-  padding: 20px 24px;
+  padding: 10px;
   background: #f0f2ff;
   /* 浅色背景 */
   color: #666;
@@ -1423,7 +1621,7 @@ body {
 
 @media (max-width: 768px) {
   .site-footer {
-    padding: 15px 16px;
+    padding: 10px;
   }
 
   .footer-content {
