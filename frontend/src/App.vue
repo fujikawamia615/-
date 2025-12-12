@@ -3,10 +3,19 @@ import { ref, onMounted, computed, h } from 'vue';
 import axios from 'axios';
 import live2d from "vue3-live2d";
 import ResourceCard from './components/ResourceCard.vue';
-import { NInput, NButton, NForm, NFormItem, NConfigProvider, NAvatar, NDropdown, NModal, NCard, NDataTable, NEmpty, NList, NListItem, NTag } from 'naive-ui';
+import { NInput, NButton, NForm, NFormItem, NConfigProvider, NAvatar, NDropdown, NModal, NCard, NEmpty, NList, NListItem, NTag } from 'naive-ui';
 onMounted(() => {
   document.documentElement.classList.add('loaded');
 });
+const API_BASE = '';
+const tips = ref({ visibilitychange: [{ selector: 'document', texts: ['哇，你终于回来了～'] }] });
+const width = ref(400);
+const height = ref(400);
+const username = ref('');
+const password = ref('');
+const loginError = ref('');
+const isLoggedIn = ref(false);
+const showRegisterView = ref(false);
 const loginInputOverrides = {
   Input: {
     heightLarge: '48px',
@@ -34,66 +43,54 @@ const dropdownOptions = ref([
     icon: () => '📜'
   }
 ]);
-const showCommunityView = ref(false); // 控制社区视图显示
-const communityPosts = ref([]); // 存储帖子列表
-const isFetchingPosts = ref(false); // 加载状态
-const fetchPostsError = ref(null); // 帖子加载错误
-
-const showPostModal = ref(false); // 控制发帖模态框显示
-const newPostForm = ref({ // 新帖子表单数据
+const showCommunityView = ref(false);
+const communityPosts = ref([]);
+const isFetchingPosts = ref(false);
+const fetchPostsError = ref(null);
+const showPostModal = ref(false);
+const newPostForm = ref({
   title: '',
   content: ''
 });
-const postError = ref(''); // 发帖错误信息
-const postSuccess = ref(''); // 发帖成功信息
+const postError = ref('');
+const postSuccess = ref('');
 const showChangePasswordModal = ref(false); // 控制模态框显示
 const changePasswordForm = ref({
   oldPassword: '',
   newPassword: '',
   confirmPassword: ''
 });
-const showDownloadHistoryModal = ref(false); // 控制模态框显示
-const downloadHistoryList = ref([]); // 存储解析后的历史记录 [{title: 'xxx', count: 3}, ...]
+const showDownloadHistoryModal = ref(false);
+const downloadHistoryList = ref([]);
 const downloadHistoryError = ref('');
 const changePasswordError = ref('');
 const changePasswordSuccess = ref('');
-const showDocReaderModal = ref(false);    // 控制阅读器模态框显示
-const currentDocUrl = ref('');           // 文档的下载 URL
-const currentDocName = ref('');          // 文档名称
-const currentDocContent = ref('正在加载文档内容...'); // 新增状态：存放获取到的 TXT 内容
-const showVideoPlayerModal = ref(false); // 控制播放器模态框显示
-const currentVideoUrl = ref('');         // 当前播放视频的URL
+const showDocReaderModal = ref(false);
+const currentDocUrl = ref('');
+const currentDocName = ref('');
+const currentDocContent = ref('正在加载文档内容...');
+const showVideoPlayerModal = ref(false);
+const currentVideoUrl = ref('');
 const currentVideoName = ref('');
-const tips = ref({ visibilitychange: [{ selector: 'document', texts: ['哇，你终于回来了～'] }] });
+const showAudioPlayerModal = ref(false);
+const currentAudioUrl = ref('');
+const currentAudioName = ref('');
 const searchResults = ref([]);
 const isSearching = ref(false);
-const showAudioPlayerModal = ref(false); // 控制音乐播放器模态框显示
-const currentAudioUrl = ref('');         // 当前播放音乐的 URL
-const currentAudioName = ref('');
-const username = ref('');
-const password = ref('');
-const loginError = ref('');
-const isLoggedIn = ref(false);
-const showRegisterView = ref(false);
-const showSearchView = ref(false);
-const showRankingView = ref(false);
 const searchQuery = ref('');
-const width = ref(400);
-const height = ref(400);
+const showSearchView = ref(false);
 const currentFilter = ref(null);
 const filteredResources = ref([]);
 const showAllResources = ref(false);
 const resources = ref([]);
 const loading = ref(false);
 const error = ref(null);
-const API_BASE = '';
 const featuredResources = computed(() => {
   if (!resources.value || resources.value.length === 0) return [];
   return [...resources.value]
     .sort((a, b) => (b.times || 0) - (a.times || 0))
     .slice(0, 6);
 });
-
 const latestResources = computed(() => {
   if (!resources.value || resources.value.length === 0) return [];
   return [...resources.value]
@@ -104,50 +101,38 @@ const latestResources = computed(() => {
     })
     .slice(0, 6);
 });
+const showRankingView = ref(false);
 const rankingResources = computed(() => {
   return [...resources.value]
     .sort((a, b) => (b.times || 0) - (a.times || 0))
     .slice(0, 25);
 });
 function playAudio(resource) {
-  // 音乐播放使用流媒体接口
   currentAudioUrl.value = getResourceStreamUrl(resource);
   currentAudioName.value = resource.name;
-
   showAudioPlayerModal.value = true;
 }
 function readDocument(resource) {
   const docUrl = getResourceStreamUrl(resource);
-
   currentDocUrl.value = docUrl;
   currentDocName.value = resource.name;
   currentDocContent.value = '正在加载文档内容...';
   showDocReaderModal.value = true;
-
-  // 1. 使用 fetch 获取原始 Blob 数据
   fetch(docUrl)
     .then(response => {
       if (!response.ok) {
         throw new Error('网络请求失败: ' + response.statusText);
       }
-      return response.blob(); // <-- 获取 Blob 原始数据
+      return response.blob();
     })
     .then(blob => {
-      // 2. 使用 FileReader API 读取 Blob
       const reader = new FileReader();
-
-      // ❗ 核心：指定 GBK 编码进行读取 ❗
       reader.readAsText(blob, 'GBK');
-
-      // 3. 监听读取完成事件
       reader.onload = function (event) {
         if (event.target.readyState === FileReader.DONE) {
-          // 成功解码后的文本
           currentDocContent.value = event.target.result;
         }
       };
-
-      // 4. 监听读取错误事件
       reader.onerror = function () {
         throw new Error('FileReader 读取文件失败');
       };
@@ -161,44 +146,30 @@ function getResourceStreamUrl(resource) {
   if (!resource.fileType || !resource.fileKey) return '#';
   const encodedType = encodeURIComponent(resource.fileType);
   const encodedKey = encodeURIComponent(resource.fileKey);
-  // ❗ 对应后端新增的 /stream 接口 ❗
   return `${API_BASE}/api/stream/resource/${encodedType}/${encodedKey}`;
 }
-
-// -----------------------------------------------------------------
-// 新增函数 2: 处理 ResourceCard 发出的 'play' 事件
-// -----------------------------------------------------------------
 function playVideo(resource) {
-  // 1. 获取流媒体 URL
   currentVideoUrl.value = getResourceStreamUrl(resource);
   currentVideoName.value = resource.name;
-
-  // 2. 显示播放器模态框
   showVideoPlayerModal.value = true;
 }
 function handleDropdownSelect(key) {
   showDropdown.value = false;
   switch (key) {
     case 'change-password':
-      // 🎯 显示更改密码模态框
       showChangePasswordModal.value = true;
       changePasswordError.value = '';
       changePasswordSuccess.value = '';
-      // 清空表单数据
       changePasswordForm.value = { oldPassword: '', newPassword: '', confirmPassword: '' };
       break;
     case 'download-history':
       downloadHistoryError.value = '';
       fetchDownloadHistory();
       break;
-      break;
   }
 }
-// ... (在 fetchResources 之后添加)
-
 function showCommunity() {
   showCommunityView.value = true;
-  // 确保其他视图被隐藏
   showSearchView.value = false;
   showRankingView.value = false;
   currentFilter.value = null;
@@ -220,76 +191,53 @@ async function fetchCommunityPosts() {
     isFetchingPosts.value = false;
   }
 }
-
 async function handleSubmitPost() {
   postError.value = '';
   postSuccess.value = '';
-
   if (!newPostForm.value.content.trim()) {
     postError.value = '帖子内容不能为空！';
     return;
   }
-
   try {
     const response = await axios.post(`${API_BASE}/api/community/post`, {
-      author: username.value, // 核心：使用登录的用户名作为作者
+      author: username.value,
       title: newPostForm.value.title,
       content: newPostForm.value.content
     });
-
     postSuccess.value = '帖子发布成功！正在刷新列表...';
-
-    // 成功后清空表单，关闭模态框，并刷新帖子列表
     setTimeout(() => {
       showPostModal.value = false;
       newPostForm.value = { title: '', content: '' };
-      fetchCommunityPosts(); // 刷新列表
+      fetchCommunityPosts();
     }, 1500);
-
   } catch (err) {
     console.error('发布帖子失败:', err);
     postError.value = err.response && err.response.data ? err.response.data : '发布失败，请稍后再试。';
   }
 }
 async function fetchDownloadHistory() {
-  // 假设您在登录后将用户名存储在 username.value 中
   if (!username.value) {
     downloadHistoryError.value = '请先登录。';
     return;
   }
-
   downloadHistoryList.value = [];
   downloadHistoryError.value = '';
-
   try {
-    // 1. 调用后端接口获取响应
     const response = await axios.post(`${API_BASE}/api/download-history`, {
       username: username.value
     });
-
-    // 🎯 核心修正：直接使用 response.data 作为对象
-    // axios 已经帮我们解析了 JSON
     const historyMap = response.data;
-
     const processedList = [];
-
-    // 2. 将 Map 转换成方便 Vue 渲染的数组格式
-    // 检查 historyMap 是否是有效的对象
     if (historyMap && typeof historyMap === 'object') {
       for (const [title, count] of Object.entries(historyMap)) {
         processedList.push({ title, count });
       }
     }
-
-    // 3. (可选) 按下载次数降序排序
     processedList.sort((a, b) => b.count - a.count);
-
     downloadHistoryList.value = processedList;
-    showDownloadHistoryModal.value = true; // 显示模态框
-
+    showDownloadHistoryModal.value = true;
   } catch (err) {
     console.error('获取下载历史失败:', err);
-    // ... 错误处理逻辑保持不变 ...
     const errorMessage = err.response && err.response.data ? err.response.data : '获取下载历史失败，请检查网络或登录状态。';
     downloadHistoryError.value = errorMessage;
     showDownloadHistoryModal.value = true;
@@ -298,9 +246,7 @@ async function fetchDownloadHistory() {
 async function handleChangePassword() {
   changePasswordError.value = '';
   changePasswordSuccess.value = '';
-
   const { oldPassword, newPassword, confirmPassword } = changePasswordForm.value;
-
   if (!oldPassword || !newPassword || !confirmPassword) {
     changePasswordError.value = '所有字段都是必填项！';
     return;
@@ -317,23 +263,17 @@ async function handleChangePassword() {
     changePasswordError.value = '新密码至少需要 6 位！';
     return;
   }
-
   try {
     const response = await axios.post(`${API_BASE}/api/change-password`, {
-      username: username.value, // 确保您在登录后保存了 username.value
+      username: username.value,
       oldPassword: oldPassword,
       newPassword: newPassword
     });
-
-    // 成功处理
     changePasswordSuccess.value = response.data;
-
-    // 成功后自动登出
     setTimeout(() => {
       showChangePasswordModal.value = false;
       logout();
     }, 2000);
-
   } catch (err) {
     console.error('修改密码失败:', err);
     if (err.response && err.response.data) {
@@ -358,7 +298,6 @@ async function handleRegister() {
     showRegisterView.value = false;
     loginError.value = '';
     password.value = '';
-
   } catch (err) {
     console.error('注册失败:', err);
     if (err.response && err.response.data) {
@@ -376,28 +315,19 @@ function toggleView() {
 }
 async function handleLogin() {
   loginError.value = '';
-
   if (!username.value || !password.value) {
     loginError.value = '用户名和密码不能为空！';
     return;
   }
-
-
   if (showRegisterView.value) return;
-
   try {
-
     const response = await axios.post(`${API_BASE}/api/login`, {
       username: username.value,
       password: password.value
     });
-
-
     if (response.status === 200) {
       loginError.value = '';
-
       isLoggedIn.value = true;
-
       fetchResources();
     }
   } catch (err) {
@@ -419,7 +349,6 @@ function logout() {
   showAllResources.value = false;
   showRankingView.value = false;
 }
-
 async function fetchResources() {
   loading.value = true;
   error.value = null;
@@ -433,38 +362,23 @@ async function fetchResources() {
     loading.value = false;
   }
 }
-
 function getCoverUrl(coverName) {
   return `${API_BASE}/api/download/cover/${encodeURIComponent(coverName)}`;
 }
 
 function getResourceDownloadUrl(resource) {
   if (!resource.fileType || !resource.fileKey) return '#';
-
   const encodedType = encodeURIComponent(resource.fileType);
   const encodedKey = encodeURIComponent(resource.fileKey);
-
-  // 1. 构造基础 URL (不带用户名)
   const baseUrl = `${API_BASE}/api/download/resource/${encodedType}/${encodedKey}`;
-
-  // 2. 检查用户是否登录，并获取用户名
-  // 假设您在登录成功后，username.value 存储了当前用户名
   if (isLoggedIn.value && username.value) {
-    // 3. 拼接查询参数
-    // ❗ 核心修改：在 URL 后面添加 ?username=用户名
     return `${baseUrl}?username=${encodeURIComponent(username.value)}`;
   }
-
-  // 如果未登录，返回基础 URL 或 # (为了安全，最好阻止未登录用户下载)
-  // 您的后端会通过 @RequestParam(required = true) 强制要求这个参数
-  // 如果没有 username，后端会拒绝请求。
   return baseUrl;
 }
-
 function handleImageError(e) {
   e.target.style.display = 'none';
 }
-
 function formatSize(bytes) {
   if (!bytes || bytes <= 0) return '0 B';
   const k = 1024;
@@ -472,14 +386,12 @@ function formatSize(bytes) {
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
-
 async function performSearch() {
   if (!searchQuery.value.trim()) {
     searchResults.value = [];
     isSearching.value = false;
     return;
   }
-
   isSearching.value = true;
   try {
     const allResources = resources.value;
@@ -495,10 +407,6 @@ async function performSearch() {
   }
 }
 
-function showRanking() {
-  showRankingView.value = true;
-  if (resources.value.length === 0) fetchResources();
-}
 function toggleSearchView() {
   showSearchView.value = !showSearchView.value;
   if (!showSearchView.value) {
@@ -506,14 +414,11 @@ function toggleSearchView() {
     searchResults.value = [];
   }
 }
-
 function closeSearchView() {
   showSearchView.value = false;
   searchQuery.value = '';
   searchResults.value = [];
 }
-
-
 function showFiltered(type) {
   currentFilter.value = type;
   showAllResources.value = false;
@@ -524,13 +429,15 @@ function clearFilter() {
   currentFilter.value = null;
   showAllResources.value = false;
 }
-
 function viewAllResources() {
   showAllResources.value = true;
   currentFilter.value = '全部';
   filteredResources.value = resources.value;
 }
-
+function showRanking() {
+  showRankingView.value = true;
+  if (resources.value.length === 0) fetchResources();
+}
 </script>
 
 <template>
@@ -612,18 +519,15 @@ function viewAllResources() {
           </n-button>
         </div>
       </header>
-
       <div class="community-list-container">
         <div v-if="isFetchingPosts" class="loading-state">
           <div class="loading-spinner"></div>
           <p>正在加载帖子...</p>
         </div>
-
         <div v-else-if="fetchPostsError" class="error-state">
           <p class="error-text">{{ fetchPostsError }}</p>
           <n-button @click="fetchCommunityPosts" type="info">重新加载</n-button>
         </div>
-
         <n-list v-else bordered hoverable class="post-list">
           <n-list-item v-for="post in communityPosts" :key="post.id" class="post-item">
             <n-card :title="post.title || '无标题'" size="small" :bordered="false">
@@ -638,10 +542,8 @@ function viewAllResources() {
               </template>
             </n-card>
           </n-list-item>
-
           <n-empty v-if="communityPosts.length === 0" description="社区暂无帖子" size="large"
             style="padding: 40px 0;"></n-empty>
-
         </n-list>
       </div>
     </div>
@@ -652,17 +554,14 @@ function viewAllResources() {
           <h2>🔥 下载排行榜</h2>
         </div>
       </header>
-
       <div class="ranking-list-container">
         <div v-if="loading" class="loading-state">
           <div class="loading-spinner"></div>
           <p>正在加载排行榜...</p>
         </div>
-
         <div v-else-if="rankingResources.length === 0" class="no-ranking-data">
           暂无资源数据
         </div>
-
         <ul v-else class="ranking-list">
           <li v-for="(resource, index) in rankingResources" :key="resource.id" class="ranking-item">
             <span class="rank">{{ index + 1 }}</span>
@@ -672,7 +571,6 @@ function viewAllResources() {
         </ul>
       </div>
     </div>
-
     <div v-else-if="currentFilter" class="filter-view">
       <header class="filter-header">
         <div class="filter-header-content">
@@ -688,9 +586,7 @@ function viewAllResources() {
         </div>
       </div>
     </div>
-
     <div v-else class="normal-view">
-
       <header class="site-header">
         <div class="header-content">
           <div class="logo-area">
@@ -715,7 +611,6 @@ function viewAllResources() {
           </div>
         </div>
       </header>
-
       <div class="container">
         <div class="section-header">
           <h2 class="section-title">热门推荐</h2>
@@ -733,7 +628,6 @@ function viewAllResources() {
             :getCoverUrl="getCoverUrl" :getResourceDownloadUrl="getResourceDownloadUrl" :formatSize="formatSize"
             :handleImageError="handleImageError" @play="playVideo" @read="readDocument" @audio="playAudio" />
         </div>
-
         <div class="section-header">
           <h2 class="section-title">最新资源</h2>
           <a href="#" class="view-more" @click.prevent="viewAllResources">查看全部</a>
@@ -759,7 +653,6 @@ function viewAllResources() {
     <template #header>
       <h2>▶️ 正在播放：{{ currentVideoName }}</h2>
     </template>
-
     <div class="video-player-container">
       <video v-if="showVideoPlayerModal" :src="currentVideoUrl" controls autoplay class="video-element"
         disablePictureInPicture controlsList="nodownload">
@@ -767,7 +660,6 @@ function viewAllResources() {
       </video>
       <n-empty v-else description="视频播放器已卸载"> </n-empty>
     </div>
-
     <template #footer>
       <n-button @click="showVideoPlayerModal = false">关闭播放器</n-button>
     </template>
@@ -776,11 +668,9 @@ function viewAllResources() {
     <template #header>
       <h2>📖 阅读：{{ currentDocName }}</h2>
     </template>
-
     <div class="doc-reader-container">
       <pre class="txt-content">{{ currentDocContent }}</pre>
     </div>
-
     <template #footer>
       <n-button @click="showDocReaderModal = false">关闭阅读器</n-button>
     </template>
@@ -789,13 +679,11 @@ function viewAllResources() {
     <template #header>
       <h2>🎧 正在播放：{{ currentAudioName }}</h2>
     </template>
-
     <div class="audio-player-container">
       <audio v-if="showAudioPlayerModal" :src="currentAudioUrl" controls autoplay class="audio-element">
         抱歉，您的浏览器不支持此音频格式或加载失败。
       </audio>
     </div>
-
     <template #footer>
       <n-button @click="showAudioPlayerModal = false">关闭播放器</n-button>
     </template>
@@ -805,27 +693,22 @@ function viewAllResources() {
     <template #header>
       <h2>🔑 更改密码</h2>
     </template>
-
     <n-config-provider :theme-overrides="loginInputOverrides">
       <n-form @submit.prevent="handleChangePassword">
         <n-form-item label="旧密码" path="oldPassword">
           <n-input v-model:value="changePasswordForm.oldPassword" type="password" placeholder="请输入旧密码"
             show-password-on="click" size="large" />
         </n-form-item>
-
         <n-form-item label="新密码" path="newPassword">
           <n-input v-model:value="changePasswordForm.newPassword" type="password" placeholder="请输入新密码（至少6位）"
             show-password-on="click" size="large" />
         </n-form-item>
-
         <n-form-item label="确认新密码" path="confirmPassword">
           <n-input v-model:value="changePasswordForm.confirmPassword" type="password" placeholder="请再次输入新密码"
             show-password-on="click" size="large" />
         </n-form-item>
-
         <p v-if="changePasswordError" class="error">{{ changePasswordError }}</p>
         <p v-if="changePasswordSuccess" class="success-msg">{{ changePasswordSuccess }}</p>
-
         <n-button attr-type="submit" block type="primary" size="large"
           style="margin-top: 20px; background: linear-gradient(90deg, #6a5af9, #8a7bff); border: none;"
           :disabled="!!changePasswordSuccess">
@@ -833,7 +716,6 @@ function viewAllResources() {
         </n-button>
       </n-form>
     </n-config-provider>
-
     <template #footer>
       <n-button type="text" @click="showChangePasswordModal = false" style="color: #6a5af9; font-weight: 500;">
         取消
@@ -845,11 +727,9 @@ function viewAllResources() {
     <template #header>
       <h2>📜 下载记录 - {{ username }}</h2>
     </template>
-
     <div v-if="downloadHistoryError" class="error" style="padding: 10px; color: red;">
       {{ downloadHistoryError }}
     </div>
-
     <n-card v-else :bordered="false" size="small">
       <n-list v-if="downloadHistoryList.length > 0" bordered clickable>
         <n-list-item v-for="(item, index) in downloadHistoryList" :key="index">
@@ -865,7 +745,6 @@ function viewAllResources() {
           </div>
         </n-list-item>
       </n-list>
-
       <n-empty v-else description="暂无下载记录" size="large" style="padding: 40px 0;">
         <template #extra>
           <n-button size="small" type="info" @click="showDownloadHistoryModal = false">
@@ -873,16 +752,13 @@ function viewAllResources() {
           </n-button>
         </template>
       </n-empty>
-
     </n-card>
-
     <template #footer>
       <n-button type="text" @click="showDownloadHistoryModal = false" style="color: #666; font-weight: 500;">
         关闭
       </n-button>
     </template>
   </n-modal>
-
   <n-modal v-model:show="showChangePasswordModal" preset="card" :mask-closable="true"
     :style="{ width: '90%', maxWidth: '450px' }">
   </n-modal>
@@ -891,27 +767,22 @@ function viewAllResources() {
     <template #header>
       <h2>✏️ 发布新帖</h2>
     </template>
-
     <n-form @submit.prevent="handleSubmitPost">
       <n-form-item label="帖子标题 (可选)" path="title">
         <n-input v-model:value="newPostForm.title" placeholder="输入帖子标题" maxlength="100" show-count />
       </n-form-item>
-
       <n-form-item label="内容" path="content" :required="true">
         <n-input v-model:value="newPostForm.content" type="textarea" placeholder="分享你的想法或问题..." :rows="6"
           maxlength="2000" show-count />
       </n-form-item>
-
       <p v-if="postError" class="error">{{ postError }}</p>
       <p v-if="postSuccess" class="success-msg">{{ postSuccess }}</p>
-
       <n-button attr-type="submit" block type="primary" size="large"
         style="margin-top: 20px; background: linear-gradient(90deg, #6a5af9, #8a7bff); border: none;"
         :disabled="!!postSuccess || !newPostForm.content.trim()">
         确认发布
       </n-button>
     </n-form>
-
     <template #footer>
       <n-button type="text" @click="showPostModal = false">
         取消
@@ -927,11 +798,8 @@ body {
   margin: 0;
   padding: 0;
   -webkit-user-select: none;
-  /* 针对 WebKit 内核浏览器 (Chrome, Safari) */
   -moz-user-select: none;
-  /* 针对 Firefox */
   -ms-user-select: none;
-  /* 针对 IE/Edge */
   user-select: none;
 }
 </style>
@@ -1040,7 +908,6 @@ body {
   border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
-
 .main-layout {
   height: 100vh;
   width: 100%;
@@ -1107,7 +974,6 @@ body {
   margin-left: auto;
 }
 
-/* 新增的切换按钮样式 */
 .switch-btn {
   width: 90%;
   padding: 10px;
@@ -1119,41 +985,7 @@ body {
   font-size: 14px;
   cursor: pointer;
   transition: all 0.3s ease;
-
-  /* 关键修改：移除焦点边框 */
   outline: none;
-}
-
-/* 示例 CSS 样式 */
-.history-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-}
-
-.rank-icon {
-  font-weight: bold;
-  min-width: 30px;
-  text-align: center;
-}
-
-.top-rank {
-  color: #ff4500;
-  /* 突显前三名 */
-}
-
-.resource-title {
-  flex-grow: 1;
-  margin: 0 15px;
-  font-size: 15px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.download-count {
-  flex-shrink: 0;
 }
 
 .switch-btn:hover {
@@ -1175,48 +1007,6 @@ body {
   transform: translateY(-1px);
   box-shadow: 0 4px 15px rgba(106, 90, 249, 0.3);
 }
-
-/* 示例：复用头部样式 */
-
-
-/* 帖子卡片样式 */
-.post-list {
-  max-width: 1000px;
-  margin: 20px auto;
-}
-
-.post-item {
-  margin-bottom: 10px;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.post-content-preview {
-  font-size: 14px;
-  color: #333;
-  max-height: 60px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  /* 🎯 新增: 确保内容左对齐 */
-  text-align: left;
-}
-.post-footer {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  color: #999;
-  margin-top: 10px;
-}
-
-.post-author {
-  color: #6a5af9;
-  font-weight: 600;
-  font-size: 14px;
-}
-
 
 .section-header {
   display: flex;
@@ -1252,7 +1042,6 @@ body {
   gap: 24px;
   margin-bottom: 40px;
 }
-
 
 .ranking-view {
   position: fixed;
@@ -1343,7 +1132,73 @@ body {
   color: #888;
 }
 
-/* ===== 搜索视图 ===== */
+.history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.post-list {
+  max-width: 1000px;
+  margin: 20px auto;
+}
+
+.post-item {
+  margin-bottom: 10px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.post-content-preview {
+  font-size: 14px;
+  color: #333;
+  max-height: 60px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  text-align: left;
+}
+
+.post-footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #999;
+  margin-top: 10px;
+}
+
+.post-author {
+  color: #6a5af9;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.rank-icon {
+  font-weight: bold;
+  min-width: 30px;
+  text-align: center;
+}
+
+.top-rank {
+  color: #ff4500;
+}
+
+.resource-title {
+  flex-grow: 1;
+  margin: 0 15px;
+  font-size: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.download-count {
+  flex-shrink: 0;
+}
+
 .search-view,
 .normal-view,
 .filter-view,
@@ -1394,7 +1249,6 @@ body {
   align-items: center;
   justify-content: center;
   outline: none;
-  /* 添加此行以移除焦点时的黑色边框 */
 }
 
 .back-btn:hover {
@@ -1402,7 +1256,6 @@ body {
   color: #6a5af9;
 }
 
-/* 可选：为了保持一致性，也可以给 .search-icon 添加 outline: none */
 .search-icon {
   width: 40px;
   height: 40px;
@@ -1415,7 +1268,6 @@ body {
   align-items: center;
   justify-content: center;
   outline: none;
-  /* 添加此行 */
 }
 
 .search-icon:hover {
@@ -1519,11 +1371,8 @@ body {
   margin: 0 auto 16px;
 }
 
-/* 在 <style scoped> 标签中添加 */
-
 .success-msg {
   color: #10b981;
-  /* 绿色 */
   font-size: 14px;
   margin-top: 12px;
   padding: 8px 12px;
@@ -1533,7 +1382,6 @@ body {
   text-align: center;
 }
 
-/* 确保 .error 样式已存在或在此处定义 */
 .error {
   color: #ef4444;
   font-size: 14px;
@@ -1543,16 +1391,6 @@ body {
   border-radius: 6px;
   border: 1px solid rgba(239, 68, 68, 0.2);
   text-align: center;
-}
-
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-
-  100% {
-    transform: rotate(360deg);
-  }
 }
 
 .error-state {
@@ -1582,15 +1420,12 @@ body {
 
 .site-footer {
   width: 100%;
-  /* 确保页脚不会被滚动条覆盖，并且位于底部 */
   padding: 10px;
   background: #f0f2ff;
-  /* 浅色背景 */
   color: #666;
   text-align: center;
   border-top: 1px solid #e2e8f0;
   flex-shrink: 0;
-  /* 防止页脚被收缩 */
 }
 
 .footer-content {
@@ -1617,6 +1452,61 @@ body {
 .icp-link:hover {
   color: #8a7bff;
   text-decoration: underline;
+}
+
+.video-player-container {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: black;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.video-element {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.n-modal.n-card .n-card__content {
+  padding: 0;
+}
+
+.doc-reader-container {
+  padding: 20px;
+  background: #f8f8f8;
+  height: calc(90vh - 140px);
+  overflow-y: auto;
+}
+
+.txt-content {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-family: monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #333;
+  margin: 0;
+}
+
+.audio-player-container {
+  padding: 20px 0;
+  text-align: center;
+}
+
+.audio-element {
+  width: 100%;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 @media (max-width: 768px) {
@@ -1675,57 +1565,5 @@ body {
     align-items: flex-start;
     gap: 12px;
   }
-}
-
-.video-player-container {
-  width: 100%;
-  /* 16:9 宽高比，确保播放器不会太高或太扁 */
-  aspect-ratio: 16 / 9;
-  background: black;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.video-element {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
-/* 确保 n-modal 的内容区域没有不必要的 padding */
-.n-modal.n-card .n-card__content {
-  padding: 0;
-}
-
-.doc-reader-container {
-  padding: 20px;
-  background: #f8f8f8;
-  /* 计算高度，确保滚动条只在内容区域出现 */
-  height: calc(90vh - 140px);
-  overflow-y: auto;
-  /* 允许垂直滚动 */
-}
-
-.txt-content {
-  white-space: pre-wrap;
-  /* 关键：保留空格和换行，但允许长行自动换行 */
-  word-wrap: break-word;
-  font-family: monospace;
-  /* 等宽字体更适合阅读代码或纯文本 */
-  font-size: 14px;
-  line-height: 1.6;
-  color: #333;
-  margin: 0;
-}
-
-.audio-player-container {
-  padding: 20px 0;
-  text-align: center;
-}
-
-.audio-element {
-  width: 100%;
-  /* 填满模态框宽度 */
 }
 </style>

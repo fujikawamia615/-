@@ -1,11 +1,9 @@
-package com._9.demo.controller; // 或者 com._9.demo.dto;
+package com._9.demo.controller; 
 
 public class ChangePasswordRequest {
     private String username;
     private String oldPassword;
     private String newPassword;
-
-    // Getters
     public String getUsername() {
         return username;
     }
@@ -17,8 +15,6 @@ public class ChangePasswordRequest {
     public String getNewPassword() {
         return newPassword;
     }
-
-    // Setters
     public void setUsername(String username) {
         this.username = username;
     }

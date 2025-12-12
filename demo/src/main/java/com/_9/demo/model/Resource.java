@@ -17,18 +17,18 @@ public class Resource {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
-
 	private String name;
 	private String description;
 	private String cover;
+	
 	@Column(name = "file_key")
 	private String fileKey;
-	private int times=0;
+	private int times = 0;
 	private Long size;
-	
-	@Column(name="file_type")
+
+	@Column(name = "file_type")
 	private String fileType;
-	
+
 	@Column(name = "upload_time")
 	private java.sql.Timestamp uploadTime;
 }

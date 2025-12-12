@@ -1,19 +1,13 @@
 server:
   port: 8080 
-
 spring:
-  # 您的项目名称
   application:
     name: demo
-  
-  # ------ 数据库配置从这里开始 ------
   datasource:
-    # 请使用 PolarDB 私网地址
     url: jdbc:mysql://fujikawamia.rwlb.rds.aliyuncs.com:3306/resources_db?useSSL=false&serverTimezone=Asia/Shanghai
     username: xixixi
     password: Raiden2005@0720
     driver-class-name: com.mysql.cj.jdbc.Driver
-
   jp a:
     hibernate:
       ddl-auto: update 

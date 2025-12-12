@@ -8,7 +8,5 @@ import java.util.List;
 
 @Repository
 public interface PostRepository extends JpaRepository<Post, Long> {
-    
-    // 按发布时间降序查找所有帖子（最新的在前面）
-    List<Post> findAllByOrderByPostTimeDesc();
+	List<Post> findAllByOrderByPostTimeDesc();
 }
