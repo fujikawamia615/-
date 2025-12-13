@@ -1,9 +1,10 @@
-package com._9.demo.controller; 
+package com._9.demo.controller;
 
 public class ChangePasswordRequest {
     private String username;
     private String oldPassword;
     private String newPassword;
+
     public String getUsername() {
         return username;
     }
@@ -15,6 +16,7 @@ public class ChangePasswordRequest {
     public String getNewPassword() {
         return newPassword;
     }
+
     public void setUsername(String username) {
         this.username = username;
     }
