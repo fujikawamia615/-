@@ -7,7 +7,7 @@ import { NInput, NButton, NForm, NFormItem, NConfigProvider, NAvatar, NDropdown,
 onMounted(() => {
   document.documentElement.classList.add('loaded');
 });
-const API_BASE = '';
+const API_BASE = 'http://39.105.154.74:8080';
 const tips = ref({ visibilitychange: [{ selector: 'document', texts: ['哇，你终于回来了～'] }] });
 const width = ref(400);
 const height = ref(400);
@@ -758,9 +758,6 @@ function showRanking() {
         关闭
       </n-button>
     </template>
-  </n-modal>
-  <n-modal v-model:show="showChangePasswordModal" preset="card" :mask-closable="true"
-    :style="{ width: '90%', maxWidth: '450px' }">
   </n-modal>
   <n-modal v-model:show="showPostModal" preset="card" :mask-closable="true"
     :style="{ width: '90%', maxWidth: '600px' }">
